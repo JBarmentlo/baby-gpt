@@ -61,6 +61,30 @@ def estimate_loss():
     return out
 
 
+class AttentionHead(nn.Module):
+    def __init__(self, head_size: int):
+        super().__init__()
+        self.key = nn.Linear(n_embed, head_size, bias=False)
+        self.query = nn.Linear(n_embed, head_size, bias=False)
+        self.value = nn.Linear(n_embed, head_size, bias=False)
+
+        self.register_buffer("tril", torch.tril(torch.ones(block_size, block_size)))
+
+    def forward(self, x: torch.Tensor):
+        B, T, C = x.shape
+
+        k = self.key(x)
+        q = self.query(x)
+        v = self.value(x)
+
+        wei = q @ k.transpose(-1, -2) * C**-0.5
+        wei = wei.masked_fill(self.tril[:T, :T] == 0, float("-inf"))
+        wei = torch.softmax(wei, dim=-2)
+
+        out = wei @ v
+        return out
+
+
 # super simple bigram model
 class BigramLanguageModel(nn.Module):
 
@@ -69,6 +93,7 @@ class BigramLanguageModel(nn.Module):
         # each token directly reads off the logits for the next token from a lookup table
         self.token_embedding_table = nn.Embedding(vocab_size, n_embed)
         self.pos_embedding = nn.Embedding(block_size, n_embed)
+        self.attention = AttentionHead(n_embed)
         self.lm_head = nn.Linear(n_embed, vocab_size)
         # self.register_buffer("wei", torch.)
 
@@ -80,6 +105,7 @@ class BigramLanguageModel(nn.Module):
         tok_emb = self.token_embedding_table(idx)  # (B,T,C)
         pos_emb = self.token_embedding_table(torch.arange(0, T, device=device))  # (B,T,C)
         x = tok_emb + pos_emb
+        x = self.attention(x)
         logits = self.lm_head(x)
         if targets is None:
             loss = None
@@ -95,7 +121,8 @@ class BigramLanguageModel(nn.Module):
         # idx is (B, T) array of indices in the current context
         for _ in range(max_new_tokens):
             # get the predictions
-            logits, loss = self(idx)
+            idx_crop = idx[:, -block_size:]
+            logits, loss = self(idx_crop)
             # focus only on the last time step
             logits = logits[:, -1, :]  # becomes (B, C)
             # apply softmax to get probabilities
@@ -131,4 +158,4 @@ for iter in range(max_iters):
 
 # generate from the model
 context = torch.zeros((1, 1), dtype=torch.long, device=device)
-# print(decode(m.generate(context, max_new_tokens=500)[0].tolist()))
+print(decode(m.generate(context, max_new_tokens=500)[0].tolist()))

@@ -1,2 +1,5 @@
 venv
 playground
+
+*.egg-info
+__pycache__

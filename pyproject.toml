@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=42"]
+build-backend = "setuptools.build_meta"
+
+
+[project]
+name = "bebegepeto"
+version = "0.0.1"
+authors = [{ name = "Joep B" }]
+requires-python = ">= 3.10"
+classifiers = [
+	"Programming Language :: Python :: 3",
+	"Operating System :: OS Independent",
+]
+
+# TODO: Check all necessaries
+dependencies = [
+	"icecream",
+	"torch",
+	"numpy",
+	"black"
+]
+
+[tool.setuptools.packages.find]
+where = ["srcs"] # list of folders that contain the packages (["."] by default)
+include = [
+	"bebegepeto",
+] # package names should match these glob patterns (["*"] by default)
+
+[tool.isort]
+profile = "black"
+
+[tool.black]
+line-length = 120
+
+[tool.ruff]
+ignore = ["F541"]
+
+[tool.pylint.format]
+max-line-length = 120
